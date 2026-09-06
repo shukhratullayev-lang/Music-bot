@@ -9,7 +9,7 @@ import yt_dlp
 from aiohttp import web
 from concurrent.futures import ThreadPoolExecutor
 
-BOT_TOKEN = "8732426720:AAGtKFquKQWy91z7XndBQw37T1_x7HlLpXU"
+BOT_TOKEN = "8732426720:AAEOAOJOIMNYmcp5tQ8qlsp1K1nb6QvLe4"
 DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
-# Ko'p foydalanuvchilar uchun qidiruv natijalarini saqlash va Thread pool
 SEARCH_CACHE = {}
 executor = ThreadPoolExecutor(max_workers=10)
 
@@ -29,6 +28,10 @@ def format_duration(seconds: int) -> str:
     mins = seconds // 60
     secs = seconds % 60
     return f"{mins}:{secs:02d}"
+
+@dp.message(F.text == "/start")
+async def start_command(message: Message):
+    await message.answer("🎵 Welcome to Music Bot!\n\nJust send me a song title or artist name to search music.")
 
 @dp.message(F.text)
 async def search_music(message: Message):
@@ -43,8 +46,14 @@ async def search_music(message: Message):
         'no_warnings': True,
         'extract_flat': True,
         'socket_timeout': 30,
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web']
+            }
+        },
         'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
         }
     }
 
@@ -108,13 +117,19 @@ async def download_music(callback: CallbackQuery):
         'outtmpl': output_template,
         'quiet': True,
         'no_warnings': True,
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web']
+            }
+        },
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
         'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
         }
     }
 
