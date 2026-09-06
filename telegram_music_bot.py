@@ -33,7 +33,6 @@ async def search_music(message: Message):
     if query.startswith("/"):
         return
         
-    # Qidiruvni tezlashtirish va aniqligini oshirish uchun 'audio' so'zi qo'shildi
     search_term = f"ytsearch5:{query} audio"
     
     ydl_opts = {
@@ -110,7 +109,6 @@ async def download_music(callback: CallbackQuery):
 
     outtmpl = os.path.join(DOWNLOAD_DIR, f"%(id)s.%(ext)s")
     
-    # Kichik hajmli va tez yuklanadigan formatga sozlandi
     ydl_opts = {
         'format': 'worstaudio[ext=m4a]/bestaudio[ext=m4a]/worstaudio/best',
         'outtmpl': outtmpl,
@@ -145,7 +143,10 @@ async def download_music(callback: CallbackQuery):
                 title=title,
                 caption=f"🎧 {title}"
             )
-            os.remove(file_path)
+            try:
+                os.remove(file_path)
+            except:
+                pass
         else:
             await callback.message.answer("⚠️ Faylni yuklab bo'lmadi.")
 
