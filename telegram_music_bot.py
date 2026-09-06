@@ -1,16 +1,13 @@
 import os
-import glob
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, FSInputFile, Message
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 import yt_dlp
-import os
-from aiohttp import web
 
-BOT_TOKEN = "8732426720:AAEOAOJOlMNYmcp5tQ8qlsp1K1nb6gQvLe4"
+BOT_TOKEN = "8732426720:AAEOAOJOIMNYmcp5tQ8qlsp1K1nb6QvLe4"
 DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
@@ -24,7 +21,7 @@ SEARCH_CACHE = {}
 
 def format_duration(seconds: int) -> str:
     if not seconds:
-        return ""
+        return "0:00"
     mins = seconds // 60
     secs = seconds % 60
     return f"{mins}:{secs:02d}"
@@ -34,136 +31,122 @@ async def search_music(message: Message):
     query = message.text.strip()
     if query.startswith("/"):
         return
-        
+
     search_term = f"ytsearch5:{query} audio"
     
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
         'extract_flat': True,
+        'socket_timeout': 30,
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
     }
+
+    status_msg = await message.answer("🔍 Qidirilmoqda...")
 
     try:
         loop = asyncio.get_event_loop()
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = await loop.run_in_executor(None, lambda: ydl.extract_info(search_term, download=False))
-
+            
         results = info.get('entries', [])
-
+        
         if not results:
-            await message.answer("❌ Qo'shiq topilmadi.")
+            await status_msg.edit_text("❌ Qo'shiq topilmadi.")
             return
 
-        user_id = message.from_user.id
-        SEARCH_CACHE[user_id] = results
+        SEARCH_CACHE[message.from_user.id] = results
+        
+        text = "<b>🔍 Qidiruv natijasi:</b>\n\n"
+        keyboard_buttons = []
+        
+        for i, item in enumerate(results[:5], 1):
+            title = item.get('title', 'Nomaʼlum')
+            duration = format_duration(item.get('duration', 0))
+            text += f"<b>{i}.</b> {title} <code>({duration})</code>\n"
+            keyboard_buttons.append(InlineKeyboardButton(text=str(i), callback_data=f"dl_{i-1}"))
 
-        text_lines = [f"<b>🔍 Qidiruv natijasi: {query}</b>\n"]
-        row1 = []
-        row2 = []
-
-        for idx, track in enumerate(results, start=1):
-            title = track.get('title', 'Noma\'lum')
-            for word in ['Official Music Video', 'Official Video', 'Lyrics', '(Official Audio)', 'Official']:
-                title = title.replace(word, '')
-            title = title.strip(' -|')
-            
-            duration = format_duration(track.get('duration', 0))
-            
-            text_lines.append(f"<b>{idx}.</b> <i>{title}</i> {duration}")
-            
-            btn = InlineKeyboardButton(text=str(idx), callback_data=f"dl_{idx-1}")
-            if len(row1) < 5:
-                row1.append(btn)
-            else:
-                row2.append(btn)
-
-        keyboard = []
-        if row1:
-            keyboard.append(row1)
-        if row2:
-            keyboard.append(row2)
-
-        reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-        await message.answer("\n".join(text_lines), reply_markup=reply_markup)
-
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[keyboard_buttons])
+        await status_msg.edit_text(text, reply_markup=keyboard)
+        
     except Exception as e:
-        logger.error(f"Qidiruvda xatolik: {e}")
-        await message.answer("⚠️ Qidiruvda xatolik yuz berdi.")
+        logger.error(f"Qidirishda xatolik: {e}")
+        await status_msg.edit_text("⚠️ Qidirishda xatolik yuz berdi. Qaytadan urinib ko'ring.")
 
 @dp.callback_query(F.data.startswith("dl_"))
 async def download_music(callback: CallbackQuery):
-    await callback.answer("⚡ Tez yuklanmoqda...", show_alert=False)
-
     user_id = callback.from_user.id
-    idx = int(callback.data.split("_")[1])
-
-    if user_id not in SEARCH_CACHE or idx >= len(SEARCH_CACHE[user_id]):
-        await callback.message.answer("⚠️ Ma'lumot eskirgan, qo'shiqni qaytadan qidiring.")
+    if user_id not in SEARCH_CACHE:
+        await callback.answer("Eski natija, qaytadan qo'shiq qidiring!", show_alert=True)
         return
 
-    track = SEARCH_CACHE[user_id][idx]
-    video_id = track.get('id')
-    video_url = f"https://www.youtube.com/watch?v={video_id}"
-    title = track.get('title', 'Audio')
-    for word in ['Official Music Video', 'Official Video', 'Lyrics', '(Official Audio)', 'Official']:
-        title = title.replace(word, '')
-    title = title.strip(' -|')
+    index = int(callback.data.split("_")[1])
+    results = SEARCH_CACHE[user_id]
+    
+    if index >= len(results):
+        await callback.answer("Xatolik yuz berdi.", show_alert=True)
+        return
 
-    outtmpl = os.path.join(DOWNLOAD_DIR, f"%(id)s.%(ext)s")
+    item = results[index]
+    url = item.get('url') or f"https://www.youtube.com/watch?v={item.get('id')}"
+    title = item.get('title', 'audio')
+
+    await callback.message.edit_text(f"📥 <b>{title}</b> yuklab olinmoqda, biroz kuting...")
+
+    output_template = os.path.join(DOWNLOAD_DIR, f"%(id)s.%(ext)s")
     
     ydl_opts = {
-        'format': 'worstaudio[ext=m4a]/bestaudio[ext=m4a]/worstaudio/best',
-        'outtmpl': outtmpl,
+        'format': 'bestaudio/best',
+        'outtmpl': output_template,
         'quiet': True,
         'no_warnings': True,
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
     }
 
     try:
         loop = asyncio.get_event_loop()
-        def download_sync():
+        def download():
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([video_url])
+                info_dict = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info_dict)
+                return os.path.splitext(filename)[0] + ".mp3"
 
-        await loop.run_in_executor(None, download_sync)
+        file_path = await loop.run_in_executor(None, download)
 
-        file_path = None
-        for ext in ['m4a', 'mp3', 'webm', 'opus']:
-            possible_path = os.path.join(DOWNLOAD_DIR, f"{video_id}.{ext}")
-            if os.path.exists(possible_path):
-                file_path = possible_path
-                break
-        
-        if not file_path:
-            files = glob.glob(os.path.join(DOWNLOAD_DIR, "*"))
-            if files:
-                file_path = max(files, key=os.path.getctime)
-
-        if file_path and os.path.exists(file_path):
-            audio = FSInputFile(file_path)
-            await callback.message.answer_audio(
-                audio=audio, 
-                title=title,
-                caption=f"🎧 {title}"
-            )
+        if os.path.exists(file_path):
+            from aiogram.types import FSInputFile
+            audio_file = FSInputFile(file_path)
+            await callback.message.answer_audio(audio=audio_file, caption=f"🎵 {title}")
+            await callback.message.delete()
             try:
                 os.remove(file_path)
             except:
                 pass
         else:
-            await callback.message.answer("⚠️ Faylni yuklab bo'lmadi.")
+            await callback.message.edit_text("❌ Faylni yuklab bo'lmadi.")
 
     except Exception as e:
         logger.error(f"Yuklashda xatolik: {e}")
-        await callback.message.answer("⚠️ Yuklab olishda xatolik yuz berdi.")
+        await callback.message.edit_text("⚠️ Yuklab olishda xatolik yuz berdi.")
 
-
+# Render port talabini bajarish uchun aiohttp web server
 async def handle(request):
     return web.Response(text="Bot is running!")
 
-app = web.Application()
-app.router.add_get("/", handle)
+from aiohttp import web
 
-async def start_web_server():
+async def web_server():
+    app = web.Application()
+    app.router.add_get("/", handle)
     runner = web.AppRunner(app)
     await runner.setup()
     port = int(os.environ.get("PORT", 10000))
@@ -171,8 +154,10 @@ async def start_web_server():
     await site.start()
 
 async def main():
-    print("⚡ Bot tezkor rejimda ishga tushdi...")
-    await asyncio.gather(start_web_server(), dp.start_polling(bot))
+    await asyncio.gather(
+        dp.start_polling(bot),
+        web_server()
+    )
 
 if __name__ == "__main__":
     asyncio.run(main())
