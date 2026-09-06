@@ -35,7 +35,7 @@ def format_duration(seconds) -> str:
 
 @dp.message(F.text == "/start")
 async def start_command(message: Message):
-    await message.answer("🎵 Welcome to Music Bot!\n\nJust send me a song title or artist name to search music.")
+    await message.answer("Welcome to Music Bot!\n\nJust send me a song title or artist name to search music.")
 
 @dp.message(F.text)
 async def search_music(message: Message):
@@ -43,7 +43,7 @@ async def search_music(message: Message):
     if query.startswith("/"):
         return
 
-    search_term = f"scsearch5:{query}"
+    search_term = f"ytsearch5:{query} audio"
     
     ydl_opts = {
         'quiet': True,
@@ -52,7 +52,7 @@ async def search_music(message: Message):
         'socket_timeout': 30,
     }
 
-    status_msg = await message.answer("🔍 Searching...")
+    status_msg = await message.answer("Searching...")
 
     try:
         loop = asyncio.get_running_loop()
@@ -64,18 +64,18 @@ async def search_music(message: Message):
         results = info.get('entries', [])
         
         if not results:
-            await status_msg.edit_text("❌ No tracks found.")
+            await status_msg.edit_text("No tracks found.")
             return
 
         SEARCH_CACHE[message.from_user.id] = results
         
-        text = "<b>🔍 Search Results:</b>\n\n"
+        text = "Search Results:\n\n"
         keyboard_buttons = []
         
         for i, item in enumerate(results[:5], 1):
             title = item.get('title', 'Unknown')
             duration = format_duration(item.get('duration', 0))
-            text += f"<b>{i}.</b> {title} <code>({duration})</code>\n"
+            text += f"{i}. {title} ({duration})\n"
             keyboard_buttons.append(InlineKeyboardButton(text=str(i), callback_data=f"dl_{i-1}"))
 
         keyboard = InlineKeyboardMarkup(inline_keyboard=[keyboard_buttons])
@@ -83,7 +83,7 @@ async def search_music(message: Message):
         
     except Exception as e:
         logger.error(f"Search error: {e}")
-        await status_msg.edit_text("⚠️ An error occurred while searching. Please try again.")
+        await status_msg.edit_text("An error occurred while searching. Please try again.")
 
 @dp.callback_query(F.data.startswith("dl_"))
 async def download_music(callback: CallbackQuery):
@@ -100,10 +100,10 @@ async def download_music(callback: CallbackQuery):
         return
 
     item = results[index]
-    url = item.get('url') or item.get('webpage_url')
+    url = item.get('url') or f"https://www.youtube.com/watch?v={item.get('id')}"
     title = item.get('title', 'audio')
 
-    await callback.message.edit_text(f"📥 <b>{title}</b> is downloading, please wait...")
+    await callback.message.edit_text(f"{title} is downloading, please wait...")
 
     output_template = os.path.join(DOWNLOAD_DIR, f"%(id)s.%(ext)s")
     
@@ -132,18 +132,18 @@ async def download_music(callback: CallbackQuery):
         if os.path.exists(file_path):
             from aiogram.types import FSInputFile
             audio_file = FSInputFile(file_path)
-            await callback.message.answer_audio(audio=audio_file, caption=f"🎵 {title}")
+            await callback.message.answer_audio(audio=audio_file, caption=title)
             await callback.message.delete()
             try:
                 os.remove(file_path)
             except:
                 pass
         else:
-            await callback.message.edit_text("❌ Failed to download the file.")
+            await callback.message.edit_text("Failed to download the file.")
 
     except Exception as e:
         logger.error(f"Download error: {e}")
-        await callback.message.edit_text("⚠️ Failed to download due to an error.")
+        await callback.message.edit_text("Failed to download due to an error.")
 
 async def handle(request):
     return web.Response(text="Bot is running!")
