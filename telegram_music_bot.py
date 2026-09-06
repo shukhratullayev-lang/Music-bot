@@ -9,7 +9,7 @@ import yt_dlp
 from aiohttp import web
 from concurrent.futures import ThreadPoolExecutor
 
-BOT_TOKEN = "8732426720:AAGtKFquKQWy91z7XndBQw37T1_x7HlLpXU"
+BOT_TOKEN = "8732426720:AAEOAOJOIMNYmcp5tQ8qlsp1K1nb6QvLe4"
 DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
@@ -48,12 +48,11 @@ async def search_music(message: Message):
         'socket_timeout': 30,
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'web']
+                'player_client': ['mweb']
             }
         },
         'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept-Language': 'en-US,en;q=0.9',
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
         }
     }
 
@@ -119,7 +118,7 @@ async def download_music(callback: CallbackQuery):
         'no_warnings': True,
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'web']
+                'player_client': ['mweb']
             }
         },
         'postprocessors': [{
@@ -128,8 +127,7 @@ async def download_music(callback: CallbackQuery):
             'preferredquality': '192',
         }],
         'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept-Language': 'en-US,en;q=0.9',
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
         }
     }
 
