@@ -9,7 +9,7 @@ import yt_dlp
 from aiohttp import web
 from concurrent.futures import ThreadPoolExecutor
 
-BOT_TOKEN = "8732426720:AAEOAOJOIMNYmcp5tQ8qlsp1K1nb6QvLe4"
+BOT_TOKEN = "8732426720:AAGtKFquKQWy91z7XndBQw37T1_x7HlLpXU"
 DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
