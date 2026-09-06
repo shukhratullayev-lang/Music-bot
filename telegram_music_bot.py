@@ -43,7 +43,8 @@ async def search_music(message: Message):
     if query.startswith("/"):
         return
 
-    search_term = f"ytsearch5:{query} audio"
+    # Faqat SoundCloud orqali qidirish
+    search_term = f"scsearch5:{query}"
     
     ydl_opts = {
         'quiet': True,
@@ -100,8 +101,13 @@ async def download_music(callback: CallbackQuery):
         return
 
     item = results[index]
-    url = item.get('url') or f"https://www.youtube.com/watch?v={item.get('id')}"
+    # YouTube'ga o'tib ketmasligi uchun faqat SoundCloud havolasini olamiz
+    url = item.get('url') or item.get('webpage_url')
     title = item.get('title', 'audio')
+
+    if not url:
+        await callback.message.edit_text("Failed to get track URL.")
+        return
 
     await callback.message.edit_text(f"{title} is downloading, please wait...")
 
