@@ -39,21 +39,14 @@ async def search_music(message: Message):
     if query.startswith("/"):
         return
 
-    search_term = f"ytsearch5:{query} audio"
+    # SoundCloud orqali qidirish (YouTube blokirovkasini chetlab o'tadi)
+    search_term = f"scsearch5:{query}"
     
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
         'extract_flat': True,
         'socket_timeout': 30,
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['mweb']
-            }
-        },
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
-        }
     }
 
     status_msg = await message.answer("🔍 Searching...")
@@ -104,7 +97,7 @@ async def download_music(callback: CallbackQuery):
         return
 
     item = results[index]
-    url = item.get('url') or f"https://www.youtube.com/watch?v={item.get('id')}"
+    url = item.get('url') or item.get('webpage_url')
     title = item.get('title', 'audio')
 
     await callback.message.edit_text(f"📥 <b>{title}</b> is downloading, please wait...")
@@ -116,19 +109,11 @@ async def download_music(callback: CallbackQuery):
         'outtmpl': output_template,
         'quiet': True,
         'no_warnings': True,
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['mweb']
-            }
-        },
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
-        }
     }
 
     try:
