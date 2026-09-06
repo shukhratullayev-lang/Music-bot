@@ -7,6 +7,7 @@ from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 import yt_dlp
 from aiohttp import web
+from concurrent.futures import ThreadPoolExecutor
 
 BOT_TOKEN = "8732426720:AAEOAOJOIMNYmcp5tQ8qlsp1K1nb6QvLe4"
 DOWNLOAD_DIR = "downloads"
@@ -18,7 +19,9 @@ logger = logging.getLogger(__name__)
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
+# Ko'p foydalanuvchilar uchun qidiruv natijalarini saqlash va Thread pool
 SEARCH_CACHE = {}
+executor = ThreadPoolExecutor(max_workers=10)
 
 def format_duration(seconds: int) -> str:
     if not seconds:
@@ -48,10 +51,12 @@ async def search_music(message: Message):
     status_msg = await message.answer("🔍 Searching...")
 
     try:
-        loop = asyncio.get_event_loop()
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = await loop.run_in_executor(None, lambda: ydl.extract_info(search_term, download=False))
-            
+        loop = asyncio.get_running_loop()
+        def search():
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                return ydl.extract_info(search_term, download=False)
+
+        info = await loop.run_in_executor(executor, search)
         results = info.get('entries', [])
         
         if not results:
@@ -114,14 +119,14 @@ async def download_music(callback: CallbackQuery):
     }
 
     try:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         def download():
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info_dict = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info_dict)
                 return os.path.splitext(filename)[0] + ".mp3"
 
-        file_path = await loop.run_in_executor(None, download)
+        file_path = await loop.run_in_executor(executor, download)
 
         if os.path.exists(file_path):
             from aiogram.types import FSInputFile
