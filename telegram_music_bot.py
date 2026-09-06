@@ -7,7 +7,7 @@ from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 import yt_dlp
 
-BOT_TOKEN = "8732426720:AAEOAOJOIMNYmcp5tQ8qlsp1K1nb6QvLe4"
+BOT_TOKEN = "8732426720:AAHOB5F8irHkAfboBPt5V5bEdU-ZaT1v5iQ"
 DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
