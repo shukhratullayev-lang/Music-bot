@@ -6,8 +6,9 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, C
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 import yt_dlp
+from aiohttp import web
 
-BOT_TOKEN = "8732426720:AAHOB5F8irHkAfboBPt5V5bEdU-ZaT1v5iQ"
+BOT_TOKEN = "8732426720:AAEOAOJOIMNYmcp5tQ8qlsp1K1nb6QvLe4"
 DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
@@ -44,7 +45,7 @@ async def search_music(message: Message):
         }
     }
 
-    status_msg = await message.answer("🔍 Qidirilmoqda...")
+    status_msg = await message.answer("🔍 Searching...")
 
     try:
         loop = asyncio.get_event_loop()
@@ -54,16 +55,16 @@ async def search_music(message: Message):
         results = info.get('entries', [])
         
         if not results:
-            await status_msg.edit_text("❌ Qo'shiq topilmadi.")
+            await status_msg.edit_text("❌ No tracks found.")
             return
 
         SEARCH_CACHE[message.from_user.id] = results
         
-        text = "<b>🔍 Qidiruv natijasi:</b>\n\n"
+        text = "<b>🔍 Search Results:</b>\n\n"
         keyboard_buttons = []
         
         for i, item in enumerate(results[:5], 1):
-            title = item.get('title', 'Nomaʼlum')
+            title = item.get('title', 'Unknown')
             duration = format_duration(item.get('duration', 0))
             text += f"<b>{i}.</b> {title} <code>({duration})</code>\n"
             keyboard_buttons.append(InlineKeyboardButton(text=str(i), callback_data=f"dl_{i-1}"))
@@ -72,28 +73,28 @@ async def search_music(message: Message):
         await status_msg.edit_text(text, reply_markup=keyboard)
         
     except Exception as e:
-        logger.error(f"Qidirishda xatolik: {e}")
-        await status_msg.edit_text("⚠️ Qidirishda xatolik yuz berdi. Qaytadan urinib ko'ring.")
+        logger.error(f"Search error: {e}")
+        await status_msg.edit_text("⚠️ An error occurred while searching. Please try again.")
 
 @dp.callback_query(F.data.startswith("dl_"))
 async def download_music(callback: CallbackQuery):
     user_id = callback.from_user.id
     if user_id not in SEARCH_CACHE:
-        await callback.answer("Eski natija, qaytadan qo'shiq qidiring!", show_alert=True)
+        await callback.answer("Session expired, please search again!", show_alert=True)
         return
 
     index = int(callback.data.split("_")[1])
     results = SEARCH_CACHE[user_id]
     
     if index >= len(results):
-        await callback.answer("Xatolik yuz berdi.", show_alert=True)
+        await callback.answer("Error occurred.", show_alert=True)
         return
 
     item = results[index]
     url = item.get('url') or f"https://www.youtube.com/watch?v={item.get('id')}"
     title = item.get('title', 'audio')
 
-    await callback.message.edit_text(f"📥 <b>{title}</b> yuklab olinmoqda, biroz kuting...")
+    await callback.message.edit_text(f"📥 <b>{title}</b> is downloading, please wait...")
 
     output_template = os.path.join(DOWNLOAD_DIR, f"%(id)s.%(ext)s")
     
@@ -132,17 +133,14 @@ async def download_music(callback: CallbackQuery):
             except:
                 pass
         else:
-            await callback.message.edit_text("❌ Faylni yuklab bo'lmadi.")
+            await callback.message.edit_text("❌ Failed to download the file.")
 
     except Exception as e:
-        logger.error(f"Yuklashda xatolik: {e}")
-        await callback.message.edit_text("⚠️ Yuklab olishda xatolik yuz berdi.")
+        logger.error(f"Download error: {e}")
+        await callback.message.edit_text("⚠️ Failed to download due to an error.")
 
-# Render port talabini bajarish uchun aiohttp web server
 async def handle(request):
     return web.Response(text="Bot is running!")
-
-from aiohttp import web
 
 async def web_server():
     app = web.Application()
