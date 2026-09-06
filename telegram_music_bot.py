@@ -22,8 +22,12 @@ dp = Dispatcher()
 SEARCH_CACHE = {}
 executor = ThreadPoolExecutor(max_workers=10)
 
-def format_duration(seconds: int) -> str:
+def format_duration(seconds) -> str:
     if not seconds:
+        return "0:00"
+    try:
+        seconds = int(float(seconds))
+    except (ValueError, TypeError):
         return "0:00"
     mins = seconds // 60
     secs = seconds % 60
@@ -39,7 +43,6 @@ async def search_music(message: Message):
     if query.startswith("/"):
         return
 
-    # SoundCloud orqali qidirish (YouTube blokirovkasini chetlab o'tadi)
     search_term = f"scsearch5:{query}"
     
     ydl_opts = {
