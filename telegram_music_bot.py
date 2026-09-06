@@ -10,7 +10,7 @@ import yt_dlp
 import os
 from aiohttp import web
 
-BOT_TOKEN = "8732426720:AAH7YNVEXM9Ag03HmUXHJGG9y3Byt-TsXy4"
+BOT_TOKEN = "8732426720:AAEOAOJOIMNYmcp5tQ8qlsp1K1nb6QvLe4"
 DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
